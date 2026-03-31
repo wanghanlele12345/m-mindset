@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Millenniums Midset</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <header class="app-header glass-panel">
+            <div class="header-content">
+                <div class="logo">
+                    <img src="/static/logo.png" alt="Millenniums Midset Logo" class="logo-img">
+                    <div class="brand">
+                        <h1>Millenniums Midset</h1>
+                    </div>
+                </div>
+                <div class="header-quote">
+                    "And let thy feet, millenniums hence, be set in midst of knowledge."
+                    <div class="quote-author">&mdash; Alfred, Lord Tennyson</div>
+                </div>
+                <div class="header-controls"
+                    style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
+                    <div class="theme-toggles" style="display: flex; gap: 8px;">
+                        <button id="theme-light-btn" class="theme-btn" title="白天模式"
+                            style="background:none;border:none;cursor:pointer;font-size:1.4rem;opacity:0.5;transition:opacity 0.2s;">☀️</button>
+                        <button id="theme-dark-btn" class="theme-btn active" title="夜晚模式"
+                            style="background:none;border:none;cursor:pointer;font-size:1.4rem;opacity:1;transition:opacity 0.2s;">🌙</button>
+                    </div>
+                    <div class="stats" style="display: flex; gap: 12px; align-items: center;">
+                        <span><span id="shown-count">0</span> / <span id="total-count">0</span> 本</span>
+                        <a href="/哲学/others" id="view-other-btn" class="view-btn"
+                            style="text-decoration: none; padding: 4px 10px; border-radius: 4px; border: 1px solid var(--border-color); color: var(--text-color); font-size: 0.85rem; background: rgba(255, 255, 255, 0.05); transition: all 0.2s;">查看“其他”分类详情
+                            &rarr;</a>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="app-body">
+            <!-- Left Sidebar -->
+            <aside class="sidebar glass-panel" id="sidebar">
+                <nav class="sidebar-nav">
+                    <ul class="sidebar-nav-links" id="root-category-nav">
+                        <li class="sidebar-nav-item active" data-root="哲学">哲学</li>
+                        <li class="sidebar-nav-item" data-root="心理学">心理学</li>
+                        <li class="sidebar-nav-item" data-root="历史">历史</li>
+                        <li class="sidebar-nav-item" data-root="文学">文学</li>
+                    </ul>
+                </nav>
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">🔍 搜索</h3>
+                    <input type="text" id="search-input" class="sidebar-search" placeholder="搜索书名、作者...">
+                </div>
+
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">📋 状态</h3>
+                    <label class="checkbox-item">
+                        <input type="radio" name="status-filter" value="all" checked> 全部
+                    </label>
+                    <label class="checkbox-item">
+                        <input type="radio" name="status-filter" value="classified"> 已分类
+                    </label>
+                    <label class="checkbox-item">
+                        <input type="radio" name="status-filter" value="unclassified"> 未分类
+                    </label>
+                    <div class="rating-filter">
+                        <span class="rating-label">评 分 区 间</span>
+                        <div class="rating-inputs">
+                            <input type="number" id="min-rating" class="sidebar-search rating-input" placeholder="Min"
+                                min="0" max="10" step="0.1">
+                            <span class="rating-sep">-</span>
+                            <input type="number" id="max-rating" class="sidebar-search rating-input" placeholder="Max"
+                                min="0" max="10" step="0.1">
+                        </div>
+                    </div>
+
+                    <button id="clear-all-filters" class="clear-btn"
+                        style="width: 100%; text-align: center; padding: 8px; margin-top: 16px; border: 1px solid var(--border-color); background: rgba(255, 255, 255, 0.02); font-size: 0.95rem;">🧹
+                        清除全部筛选</button>
+                </div>
+
+                <div class="sidebar-section collapsible-section collapsed" id="category-section">
+                    <div class="sidebar-title-row collapsible-header">
+                        <h3 class="sidebar-title"><span class="toggle-icon">▼</span> 📂 分类</h3>
+                        <button class="clear-btn" id="clear-categories">清除</button>
+                    </div>
+                    <div id="category-list" class="checkbox-list collapsible-body">
+                        <span class="sidebar-loading">加载中...</span>
+                    </div>
+                </div>
+
+                <div class="sidebar-section collapsible-section collapsed" id="tag-section-流派">
+                    <div class="sidebar-title-row collapsible-header">
+                        <h3 class="sidebar-title"><span class="toggle-icon">▼</span> 🎭 流派</h3>
+                        <button class="clear-btn" data-dim="流派">清除</button>
+                    </div>
+                    <div id="tag-list-流派" class="checkbox-list collapsible-body"></div>
+                </div>
+
+                <div class="sidebar-section collapsible-section collapsed" id="tag-section-时代">
+                    <div class="sidebar-title-row collapsible-header">
+                        <h3 class="sidebar-title"><span class="toggle-icon">▼</span> 🕰️ 时代</h3>
+                        <button class="clear-btn" data-dim="时代">清除</button>
+                    </div>
+                    <div id="tag-list-时代" class="checkbox-list collapsible-body"></div>
+                </div>
+
+                <div class="sidebar-section collapsible-section collapsed" id="tag-section-性质">
+                    <div class="sidebar-title-row collapsible-header">
+                        <h3 class="sidebar-title"><span class="toggle-icon">▼</span> 📖 性质</h3>
+                        <button class="clear-btn" data-dim="性质">清除</button>
+                    </div>
+                    <div id="tag-list-性质" class="checkbox-list collapsible-body"></div>
+                </div>
+
+                <div class="sidebar-section collapsible-section collapsed" id="tag-section-主题">
+                    <div class="sidebar-title-row collapsible-header">
+                        <h3 class="sidebar-title"><span class="toggle-icon">▼</span> 🏷️ 主题</h3>
+                        <button class="clear-btn" data-dim="主题">清除</button>
+                    </div>
+                    <div id="tag-list-主题" class="checkbox-list collapsible-body"></div>
+                </div>
+
+                <div class="sidebar-section collapsible-section collapsed" id="tag-section-人物">
+                    <div class="sidebar-title-row collapsible-header">
+                        <h3 class="sidebar-title"><span class="toggle-icon">▼</span> 👤 人物</h3>
+                        <button class="clear-btn" data-dim="人物">清除</button>
+                    </div>
+                    <div id="tag-list-人物" class="checkbox-list collapsible-body"></div>
+                </div>
+            </aside>
+
+            <!-- Right Content -->
+            <main class="content">
+                <div class="table-container glass-panel">
+                    <table id="books-table">
+                        <thead>
+                            <tr>
+                                <th data-sort="id" class="sortable">ID <span class="sort-icon"></span></th>
+                                <th>封面</th>
+                                <th data-sort="title" class="sortable">书名 <span class="sort-icon"></span></th>
+                                <th>分类</th>
+                                <th>标签</th>
+                                <th data-sort="author" class="sortable">作者 <span class="sort-icon"></span></th>
+                                <th data-sort="rating" class="sortable desc">评分 <span class="sort-icon">▼</span></th>
+                                <th data-sort="rating_count" class="sortable">评价 <span class="sort-icon"></span></th>
+                                <th data-sort="total_score" class="sortable">总分 <span class="sort-icon"></span></th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body">
+                            <tr class="loading-row">
+                                <td colspan="9">
+                                    <div class="skeleton"></div>
+                                </td>
+                            </tr>
+                            <tr class="loading-row">
+                                <td colspan="9">
+                                    <div class="skeleton"></div>
+                                </td>
+                            </tr>
+                            <tr class="loading-row">
+                                <td colspan="9">
+                                    <div class="skeleton"></div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="empty-state" id="empty-state" style="display: none;">
+                        <p>没有找到匹配的书籍</p>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Modal for Book Details -->
+    <div id="book-modal" class="modal">
+        <div class="modal-content glass-panel">
+            <span class="close-btn">&times;</span>
+            <div id="modal-body"></div>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+
+</html>

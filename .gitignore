@@ -1,0 +1,11 @@
+.venv/
+venv/
+__pycache__/
+*.db-shm
+*.db-wal
+.DS_Store
+output/covers/
+output/*.log
+output/*.json
+output/*.csv
+.idea/
