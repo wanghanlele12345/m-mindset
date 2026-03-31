@@ -10,8 +10,8 @@ import unicodedata
 
 app = FastAPI()
 
-# 强制使用绝对路径 (由于现在在 api/ 目录下，根目录是上一级)
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# 强制使用绝对路径
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "data", "books.db")
 COVERS_DIR = os.path.join(BASE_DIR, "data", "covers")
 

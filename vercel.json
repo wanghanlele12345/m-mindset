@@ -1,33 +1,21 @@
 {
   "builds": [
     {
-      "src": "api/index.py",
+      "src": "app.py",
       "use": "@vercel/python",
       "config": {
-        "includeFiles": "../data/books.db"
+        "includeFiles": "data/**"
       }
     }
   ],
-  "rewrites": [
+  "routes": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api/index.py"
+      "src": "/static/(.*)",
+      "dest": "/static/$1"
     },
     {
-      "source": "/covers/(.*)",
-      "destination": "/api/index.py"
-    },
-    {
-      "source": "/(.*)/others",
-      "destination": "/static/other.html"
-    },
-    {
-      "source": "/others",
-      "destination": "/static/other.html"
-    },
-    {
-      "source": "/",
-      "destination": "/static/index.html"
+      "src": "/(.*)",
+      "dest": "/app.py"
     }
   ]
 }
