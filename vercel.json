@@ -1,9 +1,14 @@
 {
-  "functions": {
-    "app.py": {
-      "includeFiles": "data/books.db"
+  "version": 2,
+  "builds": [
+    {
+      "src": "app.py",
+      "use": "@vercel/python",
+      "config": {
+        "includeFiles": "data/books.db"
+      }
     }
-  },
+  ],
   "routes": [
     {
       "src": "/api/(.*)",
