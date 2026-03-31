@@ -4,18 +4,14 @@
       "src": "app.py",
       "use": "@vercel/python",
       "config": {
-        "includeFiles": "data/**"
+        "includeFiles": ["data/**", "static/**"]
       }
     }
   ],
   "routes": [
     {
-      "src": "/static/(.*)",
-      "dest": "/static/$1"
-    },
-    {
       "src": "/(.*)",
-      "dest": "/app.py"
+      "dest": "app.py"
     }
   ]
 }
