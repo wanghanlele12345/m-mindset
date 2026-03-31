@@ -8,7 +8,7 @@ import argparse
 import re
 import sys
 
-DB_PATH = "output/books.db"
+DB_PATH = "data/books.db"
 
 CATEGORY_MAP = {
     "1.1": "哲学工具书", "1.2": "哲学导论与普及", "1.3": "哲学方法论", "1.4": "哲学思想史与哲学家传记",
@@ -436,7 +436,7 @@ class BookVisualizerHandler(http.server.SimpleHTTPRequestHandler):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Web Visualizer for Douban Books Database")
     parser.add_argument("--port", type=int, default=8000, help="Port to run the server on")
-    parser.add_argument("--db", type=str, default="output/books.db", help="Path to the SQLite database")
+    parser.add_argument("--db", type=str, default="data/books.db", help="Path to the SQLite database")
     args = parser.parse_args()
 
     DB_PATH = args.db

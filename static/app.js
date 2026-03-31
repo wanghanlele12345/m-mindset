@@ -473,6 +473,19 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // ============ Helpers ============
+    function getCoverUrl(book) {
+        const isLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+        const remoteUrl = book.cover_remote_url;
+        const localPath = book.cover_screenshot ? '/covers/' + book.cover_screenshot.split('/').pop() : '';
+
+        // If in cloud (Vercel), always prefer remote URL if it exists
+        if (!isLocal && remoteUrl) return remoteUrl;
+        
+        // If local, prefer local path but fallback to remote if needed
+        return localPath || remoteUrl || '';
+    }
+
     // ============ Render Table ============
     function renderTable() {
         el.shownCount.textContent = state.filteredData.length;
@@ -486,8 +499,11 @@ document.addEventListener('DOMContentLoaded', () => {
         el.emptyState.style.display = 'none';
 
         el.tableBody.innerHTML = state.filteredData.map(book => {
-            const coverUrl = book.cover_screenshot ? '/covers/' + book.cover_screenshot.split('/').pop() : '';
-            const coverImg = coverUrl ? `<img src="${coverUrl}" class="table-cover" loading="lazy" alt="">` : '<div class="table-cover-placeholder"></div>';
+            const coverUrl = getCoverUrl(book);
+            const fallbackUrl = book.cover_remote_url; // Remote as ultimate fallback
+            const coverImg = coverUrl ? 
+                `<img src="${coverUrl}" class="table-cover" loading="lazy" onerror="if(this.src!=='${fallbackUrl}'){this.src='${fallbackUrl}';}else{this.style.display='none';}" alt="">` : 
+                '<div class="table-cover-placeholder"></div>';
 
             let catHTML = '';
             let tagsHTML = '';
@@ -542,11 +558,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ============ Modal ============
     function openModal(book) {
-        const coverUrl = book.cover_screenshot ? '/covers/' + book.cover_screenshot.split('/').pop() : '';
+        const coverUrl = getCoverUrl(book);
+        const fallbackUrl = book.cover_remote_url;
         let content = `
             <div class="modal-header">
                 <div class="modal-header-content">
-                    ${coverUrl ? `<img src="${coverUrl}" class="modal-cover" alt="封面">` : ''}
+                    ${coverUrl ? `<img src="${coverUrl}" class="modal-cover" onerror="if(this.src!=='${fallbackUrl}'){this.src='${fallbackUrl}';}" alt="封面">` : ''}
                     <div>
                         <h2 class="modal-title">${esc(book.title)}</h2>
                         ${book.subtitle ? `<div class="modal-subtitle">${esc(book.subtitle)}</div>` : ''}

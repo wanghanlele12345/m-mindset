@@ -3,13 +3,10 @@ from fastapi.responses import JSONResponse, FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 import sqlite3
 import os
-import json
-import re
-import urllib.parse
 
-app = FastAPI()
-
-DB_PATH = "output/books.db"
+# Base directory for the app
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(BASE_DIR, "data", "books.db")
 
 CATEGORY_MAP = {
     "1.1": "哲学工具书", "1.2": "哲学导论与普及", "1.3": "哲学方法论", "1.4": "哲学思想史与哲学家传记",
