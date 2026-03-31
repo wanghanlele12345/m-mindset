@@ -1,5 +1,3 @@
-playwright
-uiautomator2
 fastapi
 uvicorn
 python-multipart
