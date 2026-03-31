@@ -1,4 +1,9 @@
 {
+  "functions": {
+    "app.py": {
+      "includeFiles": "data/books.db"
+    }
+  },
   "routes": [
     {
       "src": "/api/(.*)",
