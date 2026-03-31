@@ -6,12 +6,22 @@ import os
 import json
 import re
 import urllib.parse
+import unicodedata
 
 app = FastAPI()
 
-# Base directory for the app
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# 强制使用绝对路径 (由于现在在 api/ 目录下，根目录是上一级)
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB_PATH = os.path.join(BASE_DIR, "data", "books.db")
+COVERS_DIR = os.path.join(BASE_DIR, "data", "covers")
+
+print(f"\n🚀 --- SERVER STARTUP DEBUG ---")
+print(f"BASE_DIR: {BASE_DIR}")
+print(f"DB_PATH: {DB_PATH} (Exists: {os.path.exists(DB_PATH)})")
+print(f"COVERS_DIR: {COVERS_DIR} (Exists: {os.path.exists(COVERS_DIR)})")
+if os.path.exists(COVERS_DIR):
+    print(f"FILES IN COVERS: {len(os.listdir(COVERS_DIR))}")
+print(f"--------------------------------\n")
 
 CATEGORY_MAP = {
     "1.1": "哲学工具书", "1.2": "哲学导论与普及", "1.3": "哲学方法论", "1.4": "哲学思想史与哲学家传记",
@@ -178,56 +188,63 @@ async def get_other_books(root_category: str = ""):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/covers/{filename}")
+@app.get("/covers/{filename:path}")
 async def get_cover(filename: str):
-    filename = urllib.parse.unquote(filename)
-    cover_path = os.path.join(BASE_DIR, 'data', 'covers', filename)
-    if os.path.exists(cover_path):
-        return FileResponse(cover_path, media_type="image/png")
-    raise HTTPException(status_code=404, detail="Cover not found")
+    # 彻底的解码
+    decoded_filename = urllib.parse.unquote(urllib.parse.unquote(filename))
+    decoded_filename = unicodedata.normalize('NFC', decoded_filename)
+    
+    # 1. 绝对精确匹配
+    direct_path = os.path.join(COVERS_DIR, decoded_filename)
+    if os.path.exists(direct_path) and os.path.isfile(direct_path):
+        return FileResponse(direct_path, media_type="image/png")
+    
+    # 2. 忽略大小写和标点的极致模糊匹配
+    try:
+        files = os.listdir(COVERS_DIR)
+        def normalize_text(t):
+            t = unicodedata.normalize('NFC', t)
+            return re.sub(r'[^a-zA-Z0-9\u4e00-\u9fa5]', '', t.lower())
+
+        target_core = normalize_text(os.path.splitext(decoded_filename)[0])
+        
+        for f in files:
+            f_nfc = unicodedata.normalize('NFC', f)
+            # A. 包含匹配
+            if decoded_filename in f_nfc or f_nfc in decoded_filename:
+                return FileResponse(os.path.join(COVERS_DIR, f), media_type="image/png")
+            
+            # B. 核心文本匹配
+            if target_core and normalize_text(os.path.splitext(f_nfc)[0]) == target_core:
+                return FileResponse(os.path.join(COVERS_DIR, f), media_type="image/png")
+    except:
+        pass
+
+    raise HTTPException(status_code=404, detail=f"Cover not found: {decoded_filename}")
 
 @app.get("/")
 async def read_index():
     index_path = os.path.join(BASE_DIR, "static", "index.html")
-    if os.path.exists(index_path):
-        return FileResponse(index_path)
-    return HTMLResponse("<h1>Static files not found</h1>")
+    if os.path.exists(index_path): return FileResponse(index_path)
+    return HTMLResponse("<h1>Static files missing</h1>")
 
 @app.get("/other")
 @app.get("/others")
 async def read_other():
     other_path = os.path.join(BASE_DIR, "static", "other.html")
-    if os.path.exists(other_path):
-        return FileResponse(other_path)
-    return HTMLResponse("<h1>Static files not found</h1>")
+    if os.path.exists(other_path): return FileResponse(other_path)
+    return HTMLResponse("<h1>Static files missing</h1>")
 
 @app.post("/api/accept_suggestion")
 async def accept_suggestion(payload: dict = Body(...)):
     try:
         book_id = payload.get('book_id')
         suggested_category = payload.get('suggested_category')
-        if not book_id or not suggested_category:
-            return JSONResponse({'error': 'Missing params'}, status_code=400)
-
         conn = get_db_conn(mode="rw")
         cursor = conn.cursor()
-        
-        match = re.search(r'^(\d+\.\d+)(?:\s+(.*))?$', suggested_category.strip())
+        match = re.search(r'^(\d+\.\d+)', suggested_category.strip())
         cat_code = match.group(1) if match else suggested_category
-        new_cat_name = ""
-        if match and match.group(2):
-            new_cat_name = match.group(2)
-        else:
-            cursor.execute("SELECT category_name FROM book_classifications WHERE category_code = ? LIMIT 1", (cat_code,))
-            row = cursor.fetchone()
-            new_cat_name = row['category_name'] if row else ""
-
-        cursor.execute("""
-            UPDATE book_classifications 
-            SET category_code = ?, category_name = ?, suggested_category = NULL, is_philosophy = NULL, reason = NULL, confidence = 'medium'
-            WHERE book_id = ?
-        """, (cat_code, new_cat_name, book_id))
-        
+        cursor.execute("UPDATE book_classifications SET category_code = ?, suggested_category = NULL WHERE book_id = ?", (cat_code, book_id))
         conn.commit()
         conn.close()
         return {'success': True}
@@ -236,7 +253,12 @@ async def accept_suggestion(payload: dict = Body(...)):
 
 @app.post("/api/open_weread")
 async def open_weread():
-    return JSONResponse({'error': 'Cloud environment restricted.'}, status_code=400)
+    return JSONResponse({'error': 'Automation restricted to local scripts.'}, status_code=400)
 
 if os.path.exists(os.path.join(BASE_DIR, "static")):
     app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
+
+if __name__ == "__main__":
+    import uvicorn
+    print("🌟 Starting server at http://localhost:8000")
+    uvicorn.run(app, host="0.0.0.0", port=8000)
