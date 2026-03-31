@@ -1,9 +1,13 @@
 {
-  "functions": {
-    "api/index.py": {
-      "includeFiles": "data/books.db"
+  "builds": [
+    {
+      "src": "api/index.py",
+      "use": "@vercel/python",
+      "config": {
+        "includeFiles": "../data/books.db"
+      }
     }
-  },
+  ],
   "rewrites": [
     {
       "source": "/api/(.*)",
