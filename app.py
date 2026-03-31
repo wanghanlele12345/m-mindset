@@ -3,6 +3,11 @@ from fastapi.responses import JSONResponse, FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 import sqlite3
 import os
+import json
+import re
+import urllib.parse
+
+app = FastAPI()
 
 # Base directory for the app
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -22,9 +27,8 @@ CATEGORY_MAP = {
 }
 
 def get_db_conn(mode="ro"):
-    abs_db_path = os.path.abspath(DB_PATH)
+    abs_db_path = DB_PATH
     if not os.path.exists(abs_db_path):
-        # Create an empty db if not found to prevent crashes on first Vercel run
         os.makedirs(os.path.dirname(abs_db_path), exist_ok=True)
         conn = sqlite3.connect(abs_db_path)
         conn.close()
@@ -51,7 +55,7 @@ async def get_books(root_category: str = ""):
                 b.id, b.title, b.author, b.publisher, b.pub_date, b.price, b.rating, 
                 b.rating_count, b.url, b.subtitle, b.cover_screenshot, b.detail_scraped,
                 b.description, b.created_at, b.translator, b.pages, b.catalog, b.excerpt,
-                bc.category_code, bc.category_name, bc.confidence
+                bc.category_code, bc.category_name, bc.confidence, b.cover_remote_url
             FROM books b
             LEFT JOIN book_classifications bc ON b.id = bc.book_id
             {where_clause}
@@ -147,7 +151,7 @@ async def get_other_books(root_category: str = ""):
         query = f"""
             SELECT 
                 b.id, b.title, b.author, b.cover_screenshot, b.rating,
-                bc.is_philosophy, bc.belongs_to_category, bc.suggested_category, bc.reason
+                bc.is_philosophy, bc.belongs_to_category, bc.suggested_category, bc.reason, b.cover_remote_url
             FROM books b
             JOIN book_classifications bc ON b.id = bc.book_id
             WHERE (bc.category_code = '其他' OR bc.category_code = '其他分类' OR bc.category_code = 'Other')
@@ -177,81 +181,62 @@ async def get_other_books(root_category: str = ""):
 @app.get("/covers/{filename}")
 async def get_cover(filename: str):
     filename = urllib.parse.unquote(filename)
-    cover_path = os.path.join('output', 'covers', filename)
+    cover_path = os.path.join(BASE_DIR, 'data', 'covers', filename)
     if os.path.exists(cover_path):
         return FileResponse(cover_path, media_type="image/png")
     raise HTTPException(status_code=404, detail="Cover not found")
 
 @app.get("/")
 async def read_index():
-    index_path = os.path.join("static", "index.html")
+    index_path = os.path.join(BASE_DIR, "static", "index.html")
     if os.path.exists(index_path):
         return FileResponse(index_path)
-    return HTMLResponse("<h1>Static files not found</h1><p>Ensure /static/index.html exists</p>")
+    return HTMLResponse("<h1>Static files not found</h1>")
 
 @app.get("/other")
 @app.get("/others")
 async def read_other():
-    other_path = os.path.join("static", "other.html")
+    other_path = os.path.join(BASE_DIR, "static", "other.html")
     if os.path.exists(other_path):
         return FileResponse(other_path)
-    return HTMLResponse("<h1>Static files not found</h1><p>Ensure /static/other.html exists</p>")
+    return HTMLResponse("<h1>Static files not found</h1>")
 
 @app.post("/api/accept_suggestion")
 async def accept_suggestion(payload: dict = Body(...)):
-    # Note: Vercel is Read-Only. This will likely fail on Vercel unless using external DB.
     try:
         book_id = payload.get('book_id')
         suggested_category = payload.get('suggested_category')
-        
         if not book_id or not suggested_category:
-            return JSONResponse({'error': 'Missing book_id or suggested_category'}, status_code=400)
+            return JSONResponse({'error': 'Missing params'}, status_code=400)
 
         conn = get_db_conn(mode="rw")
         cursor = conn.cursor()
         
         match = re.search(r'^(\d+\.\d+)(?:\s+(.*))?$', suggested_category.strip())
-        if match:
-            cat_code = match.group(1)
-            new_cat_name = match.group(2) or ""
+        cat_code = match.group(1) if match else suggested_category
+        new_cat_name = ""
+        if match and match.group(2):
+            new_cat_name = match.group(2)
         else:
-            cat_code = suggested_category
-            new_cat_name = ""
-
-        if not new_cat_name:
             cursor.execute("SELECT category_name FROM book_classifications WHERE category_code = ? LIMIT 1", (cat_code,))
             row = cursor.fetchone()
             new_cat_name = row['category_name'] if row else ""
 
         cursor.execute("""
             UPDATE book_classifications 
-            SET category_code = ?, 
-                category_name = ?,
-                suggested_category = NULL,
-                is_philosophy = NULL,
-                reason = NULL,
-                confidence = 'medium'
+            SET category_code = ?, category_name = ?, suggested_category = NULL, is_philosophy = NULL, reason = NULL, confidence = 'medium'
             WHERE book_id = ?
         """, (cat_code, new_cat_name, book_id))
         
-        if cursor.rowcount == 0:
-            conn.close()
-            return JSONResponse({'error': 'Book classification not found'}, status_code=404)
-        
         conn.commit()
         conn.close()
-        return {'success': True, 'message': 'Book reclassified successfully'}
+        return {'success': True}
     except Exception as e:
-        return JSONResponse({'error': f"Database is Read-Only on Vercel: {str(e)}"}, status_code=500)
+        return JSONResponse({'error': str(e)}, status_code=500)
 
 @app.post("/api/open_weread")
 async def open_weread():
-    return JSONResponse({'error': 'Local automation (WeRead) is not supported on Vercel Cloud.'}, status_code=400)
+    return JSONResponse({'error': 'Cloud environment restricted.'}, status_code=400)
 
-# Mount static directory for JS/CSS
-if os.path.exists("static"):
-    app.mount("/static", StaticFiles(directory="static"), name="static")
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+if os.path.exists(os.path.join(BASE_DIR, "static")):
+    app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
