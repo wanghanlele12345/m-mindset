@@ -48,6 +48,20 @@ def get_db_conn(mode="ro"):
     conn.row_factory = sqlite3.Row
     return conn
 
+@app.get("/api/debug")
+async def debug_info():
+    import os
+    info = {
+        "BASE_DIR": BASE_DIR,
+        "DB_PATH": DB_PATH,
+        "DB_EXISTS": os.path.exists(DB_PATH),
+        "DB_SIZE_MB": os.path.getsize(DB_PATH) / (1024 * 1024) if os.path.exists(DB_PATH) else 0,
+        "CWD": os.getcwd(),
+        "FILES_IN_BASE": os.listdir(BASE_DIR) if os.path.exists(BASE_DIR) else [],
+        "FILES_IN_DATA": os.listdir(os.path.join(BASE_DIR, "data")) if os.path.exists(os.path.join(BASE_DIR, "data")) else []
+    }
+    return info
+
 @app.get("/api/books")
 async def get_books(root_category: str = ""):
     try:
